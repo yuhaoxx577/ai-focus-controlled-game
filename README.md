@@ -1,21 +1,50 @@
-# AI Focus Detection System
+# AI Focus-Controlled Shooting Game
 
-A real-time attention detection and interaction system using computer vision and facial landmark analysis.
+A real-time computer vision system where your **head movement controls a player** and your **focus triggers shooting**.
 
-## Overview
+---
 
-This project implements a lightweight attention detection pipeline using webcam input.  
-It estimates user focus based on facial behavior signals and integrates a simple interactive feedback system.
+## Demo
+
+<img width="1278" height="723" alt="image" src="https://github.com/user-attachments/assets/77245b5e-fbe8-4fa1-87e5-0db09fe9c3b3" />
+
+
+## What is this?
+
+This project uses webcam-based facial landmark detection to infer user attention and convert it into real-time game control.
+
+- Turn your head → move left/right  
+- Stay focused → shoot bullets  
+- Hit enemies → gain score  
+- Reach target score → win  
+
+---
+
+## Why this project is interesting
+
+This project demonstrates how computer vision signals can be used for real-time human-computer interaction, going beyond passive detection into active control.
+
+It combines:
+
+- Computer vision (facial landmarks)
+- Behavioral inference (attention & head movement)
+- Real-time interaction (game control loop)
+
+---
 
 ## Features
 
 - Real-time webcam processing
 - Facial landmark detection (MediaPipe)
-- Head orientation analysis (left/right/forward)
+- Head orientation analysis for left/right movement
 - Looking down detection (proxy for distraction)
 - Eye Aspect Ratio (EAR) for drowsiness detection
 - Temporal smoothing for stable predictions
-- Attention-driven scoring system (interactive demo)
+- Head-controlled player movement
+- Focus-driven shooting mechanism
+- Real-time interactive shooting gameplay
+
+---
 
 ## Tech Stack
 
@@ -24,21 +53,28 @@ It estimates user focus based on facial behavior signals and integrates a simple
 - MediaPipe
 - NumPy
 
+---
+
 ## Methodology
 
 The system extracts facial keypoints and computes:
 
-- Head pose approximation via landmark geometry
-- Eye Aspect Ratio (EAR) for eye state detection
-- Face scale for distance estimation
+- Head orientation using landmark geometry
+- Eye Aspect Ratio (EAR) for eye-state estimation
+- Face scale for distance awareness
 
 Frame-level predictions are stabilized using multi-frame aggregation to reduce noise.
 
-## Demo Logic
+---
 
-- Focused → score increases
-- Distracted / Drowsy → score decreases
-- Sustained attention required to "win"
+## Gameplay Logic
+
+- Turn head left/right → move player
+- Stay focused → fire bullets
+- Hit enemies → gain score
+- Reach target score → win
+
+---
 
 ## Installation
 
