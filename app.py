@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import time
 import numpy as np
+import random
 
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp.solutions.face_mesh.FaceMesh(
@@ -26,11 +27,20 @@ eye_closed_frames = 0
 drowsy_threshold = 10
 
 # ===== 游戏参数 =====
-game_score = 0.0
-max_score = 100.0
-game_duration = 30  # 秒
-game_start_time = time.time()
+game_score = 0
+target_score = 50
 game_result = "Playing"
+
+player_x = 320
+player_speed = 12
+
+bullets = []
+enemies = []
+
+# ===== 2D射击游戏变量 =====
+player_x = 320
+bullets = []
+enemies = []
 
 def distance(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
@@ -68,6 +78,7 @@ while True:
     raw_status = "No Face"
     stable_status = "Not Focused"
     eye_status = "Unknown"
+    turn_offset = 0
 
     # 参考线
     cv2.line(frame, (w // 2, 0), (w // 2, h), (255, 255, 0), 2)
@@ -97,6 +108,7 @@ while True:
         left_dist = abs(nose_x - left_eye_x)
         right_dist = abs(right_eye_x - nose_x)
         eye_balance = abs(left_dist - right_dist)
+        turn_offset = left_dist - right_dist
         looking_down = nose_y > int(h * 0.62)
 
         if eye_distance < 70:
@@ -155,24 +167,71 @@ while True:
                 stable_status = raw_status
 
     # ===== 游戏逻辑 =====
-    elapsed_time = time.time() - game_start_time
-    remaining_time = max(0, int(game_duration - elapsed_time))
-
     if game_result == "Playing":
+        # ===== 头控左右移动 =====
+        # turn_offset < 0：往一边移动
+        # turn_offset > 0：往另一边移动
+        if turn_offset < -8:
+            player_x -= player_speed
+        elif turn_offset > 8:
+            player_x += player_speed
+
+        # 限制玩家不能移出屏幕
+        if player_x < 20:
+            player_x = 20
+        elif player_x > w - 20:
+            player_x = w - 20
+
+        # 生成敌人
+        if random.random() < 0.02:
+            enemies.append([random.randint(50, w - 50), 0])
+
+        # 移动敌人
+        for enemy in enemies:
+            enemy[1] += 3
+
+        # 专注时自动发射子弹
         if stable_status == "Focused":
-            game_score += 0.8
-        elif stable_status == "Focusing...":
-            game_score += 0.2
-        else:
-            game_score -= 0.6
+            if len(bullets) < 12:
+                bullets.append([player_x, h - 80])
 
-        game_score = max(0.0, min(max_score, game_score))
+        # 子弹移动
+        for bullet in bullets:
+            bullet[1] -= 18
 
-        if game_score >= max_score:
+        # 碰撞检测：子弹打中敌人
+        for bullet in bullets[:]:
+            for enemy in enemies[:]:
+                if abs(bullet[0] - enemy[0]) < 28 and abs(bullet[1] - enemy[1]) < 28:
+                    bullets.remove(bullet)
+                    enemies.remove(enemy)
+                    game_score += 5
+                    break
+
+        if game_score >= target_score:
             game_result = "You Win!"
-        elif elapsed_time >= game_duration:
-            game_result = "Game Over"
 
+        # 清理飞出屏幕的子弹
+        bullets = [b for b in bullets if b[1] > 0]
+
+        # 清理掉出屏幕的敌人
+        enemies = [e for e in enemies if e[1] < h]
+
+        game_score = max(0.0, min(target_score, game_score))
+
+        if game_score >= target_score:
+            game_result = "You Win!"
+    # ===== 画 2D 射击元素 =====
+    # 玩家
+    cv2.circle(frame, (player_x, h - 40), 15, (255, 0, 0), -1)
+
+    # 子弹
+    for bullet in bullets:
+        cv2.circle(frame, (bullet[0], bullet[1]), 5, (0, 255, 0), -1)
+
+    # 敌人
+    for enemy in enemies:
+        cv2.circle(frame, (enemy[0], enemy[1]), 10, (0, 0, 255), -1)
     # ===== UI 显示 =====
     cv2.putText(
         frame,
@@ -206,6 +265,15 @@ while True:
 
     cv2.putText(
         frame,
+        f"Turn: {turn_offset}",
+        (20, 160),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (255, 255, 255),
+        2)
+
+    cv2.putText(
+        frame,
         f"Focus Time: {stable_focus_time:.1f}s",
         (20, 145),
         cv2.FONT_HERSHEY_SIMPLEX,
@@ -216,18 +284,8 @@ while True:
 
     cv2.putText(
         frame,
-        f"Score: {int(game_score)}/{int(max_score)}",
-        (20, 180),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
-        (255, 255, 255),
-        2
-    )
-
-    cv2.putText(
-        frame,
-        f"Time Left: {remaining_time}s",
-        (20, 215),
+        f"Score: {game_score}/{target_score}",
+        (20, 200),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.9,
         (255, 255, 255),
@@ -239,7 +297,7 @@ while True:
     bar_x2, bar_y2 = 320, 310
     cv2.rectangle(frame, (bar_x1, bar_y1), (bar_x2, bar_y2), (255, 255, 255), 2)
 
-    fill_width = int((game_score / max_score) * (bar_x2 - bar_x1))
+    fill_width = int((game_score / target_score) * (bar_x2 - bar_x1))
     cv2.rectangle(frame, (bar_x1, bar_y1), (bar_x1 + fill_width, bar_y2), (0, 255, 0), -1)
 
     # 游戏结果
